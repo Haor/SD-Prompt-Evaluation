@@ -1,0 +1,10 @@
+pypng
+requests
+opencv-python
+numpy
+pandas
+tqdm
+onnxruntime-gpu
+Pillow
+scikit-learn
+huggingface-hub
