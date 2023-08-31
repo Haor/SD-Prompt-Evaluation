@@ -29,19 +29,26 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from tqdm.contrib.concurrent import process_map
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 from onnxruntime import InferenceSession
 from PIL import Image
 from sklearn.metrics.pairwise import cosine_similarity
 from huggingface_hub import hf_hub_download
 
-folder_path = '/notebooks/stable-diffusion-webui/outputs/txt2img-images/2023-08-08'
+folder_path = '/path/xxxx'
 png_files = [f for f in os.listdir(folder_path) if f.endswith('.png')]
 
-API_KEY = 'sk-xxxxx'
+API_KEY = 'sk-xxxxxx'
 
 headers = {
     'Content-Type': 'application/json',
     'Authorization': f'Bearer {API_KEY}'
+}
+
+proxies = {
+  "http": "http://127.0.0.1:8899",
+  "https": "http://127.0.0.1:8899",
 }
 
 def get_embedding(text):
@@ -49,7 +56,12 @@ def get_embedding(text):
         'input': text,
         'model': 'text-embedding-ada-002'
     }
+    session = requests.Session()
+    retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[ 500, 502, 503, 504 ])
+    session.mount('https://', HTTPAdapter(max_retries=retries))
+    
     response = requests.post('https://api.openai.com/v1/embeddings', headers=headers, data=json.dumps(data))
+    #response = requests.post('https://api.openai.com/v1/embeddings', headers=headers, proxies=proxies, data=json.dumps(data))
     return response.json()['data'][0]['embedding']
 
 def get_embeddings(prompts, desc=None):
@@ -71,7 +83,7 @@ for png_file in tqdm(png_files, desc="Getting Prompt A"):
     parameters = None
     for chunk_type, data in text_chunks:
         if chunk_type == b'tEXt' and b'parameters' in data:
-            parameters = data.decode('utf-8').split('\x00')[1]
+            parameters = data.decode('ISO-8859-1').split('\x00')[1]
             break
     if parameters is None:
         print(f"No parameters found in file {png_file}, skipping this file.")
